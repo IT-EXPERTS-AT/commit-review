@@ -2,20 +2,54 @@ name: Commit Review
 
 on:
   push:
+    # only trigger on branches, not on tags
     branches: "**"
 
 jobs:
   check:
     runs-on: ubuntu-latest
 
+    env:
+      REVIEWERS_FILE: test.json
+
     steps:
       - uses: actions/checkout@v3
         with:
+          # checkout full tree
           fetch-depth: 0
-      - run: |
-          # for commit in ${{ github.event.commits }}; do
-          #   echo ${commit[id]}
+
+      # https://stackoverflow.com/questions/61919141/read-json-file-in-github-actions
+      - name: Parse Reviewers
+        id: parse_reviewers
+        run: |
+          content=`cat ${{env.REVIEWERS_FILE}}`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=reviewersJSON::$content"
+
+      - name: Check each commit
+        run: |
+          REVIEWERS=${{fromJson(steps.parse_reviewers.outputs.reviewersJSON)}}
+          echo "${REVIEWERS[@]}"
+          # FIRST=${REVIEWERS[0]}
+          # KEYWORDS=${FIRST["keywords"]}
+          # echo ${KEYWORDS[*]// /|}
+          # IFS='|';echo "${REVIEWERS[*]}";IFS=$' \t\n'
+          # for x in $REVIEWERS; do
+          #   echo $x
           # done
+
+          echo "Check"
+
           for commit in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
-              echo "run check for $commit"
+            echo "checking commit $commit"
+            if git diff -U0 $commit~1 $commit | grep -E "^\+.*Change.*"; then
+              echo "Found"
+              gh api --method POST /repos/${{github.repository}}/pulls
+            else
+              echo "Not found"
+            fi
           done

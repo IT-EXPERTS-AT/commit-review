@@ -1,0 +1,27 @@
+[
+    {
+        "keywords": [
+            "IMS"
+        ],
+        "reviewers": [
+            "min.yin@it-experts.at",
+            "another@it-experts.at"
+        ]
+    },
+    {
+        "keywords": [
+            "Lambda"
+        ],
+        "reviewers": [
+            "min.yin@it-experts.at"
+        ]
+    },
+    {
+        "keywords": [
+            "DynamoDB"
+        ],
+        "reviewers": [
+            "another@it-experts.at"
+        ]
+    }
+]
