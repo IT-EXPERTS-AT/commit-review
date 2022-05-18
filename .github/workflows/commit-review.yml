@@ -47,15 +47,19 @@ jobs:
           KEYWORD="Change"
           REVIEWERS="myin-itex"
 
-          for commit in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
-            echo "checking commit $commit"
-            if git diff -U0 $commit~1 $commit | grep -E "^\+.*$KEYWORD.*"; then
-              echo "Found"
+          for COMMIT in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
+            echo "checking commit $COMMIT"
+            if git diff -U0 $COMMIT~1 $COMMIT| grep -E "^\+.*$KEYWORD.*"; then
+              echo "Creating PR for $COMMIT"
+
+              BRANCH="commit-review-$COMMIT-$KEYWORD"
+              git checkout -b $BRANCH $COMMIT~1
+
               gh pr create --title "Review: "$KEYWORD" has been used here" \
               --body "Please check if this change is safe" \
               --reviewer $REVIEWERS \
-              --base $commit~1
-              --head $commit
+              --base $BRANCH
+              --head $COMMIT
             else
               echo "Not found"
             fi
