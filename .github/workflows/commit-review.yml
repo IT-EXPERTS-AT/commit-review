@@ -1,0 +1,16 @@
+name: Commit Review
+
+on:
+  push:
+    branches: '**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          for commit in $(git rev-list ${{ github.event.before}}..${{ github.sha}}); do
+              echo "run check for $commit"
+          done
