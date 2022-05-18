@@ -53,7 +53,7 @@ jobs:
             echo "checking commit $commit"
             if git diff -U0 $commit~1 $commit | grep -E "^\+.*$KEYWORD.*"; then
               echo "Found"
-              gh pr create --title "Review: "$KEYWORD" has been used here" --reviewer $REVIEWERS --base $commit
+              gh pr create --title "Review: "$KEYWORD" has been used here" --body "Please check if this change is safe" --reviewer $REVIEWERS --base $commit
             else
               echo "Not found"
             fi
