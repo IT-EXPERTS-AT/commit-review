@@ -54,6 +54,7 @@ jobs:
 
               BRANCH="commit-review-$COMMIT-$KEYWORD"
               git checkout -b $BRANCH $COMMIT~1
+              git push upstream $BRANCH
 
               gh pr create --title "Review: "$KEYWORD" has been used here" \
               --body "Please check if this change is safe" \
