@@ -14,6 +14,6 @@ jobs:
           # for commit in ${{ github.event.commits }}; do
           #   echo ${commit[id]}
           # done
-          for commit in $(${{ github.event.before}}..${{ github.event.after}}); do
+          for commit in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
               echo "run check for $commit"
           done
