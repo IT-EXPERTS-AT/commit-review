@@ -44,10 +44,8 @@ jobs:
           #   echo $x
           # done
 
-          echo "Check"
-
           KEYWORD="Change"
-          REVIEWERS="min.yin@it-experts.at"
+          REVIEWERS="myin-itex"
 
           for commit in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
             echo "checking commit $commit"
