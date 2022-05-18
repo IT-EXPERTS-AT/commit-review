@@ -2,7 +2,7 @@ name: Commit Review
 
 on:
   push:
-    branches: '**'
+    branches: "**"
 
 jobs:
   check:
@@ -11,9 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          for commit in ${{ github.event.commits }}; do
-            echo $commit[id]
-          done
-          # for commit in $(${{ github.event.before}}..${{ github.sha}}); do
-          #     echo "run check for $commit"
+          # for commit in ${{ github.event.commits }}; do
+          #   echo ${commit[id]}
           # done
+          for commit in $(${{ github.event.before}}..${{ github.event.after}}); do
+              echo "run check for $commit"
+          done
