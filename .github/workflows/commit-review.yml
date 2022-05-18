@@ -46,11 +46,14 @@ jobs:
 
           echo "Check"
 
+          KEYWORD="Change"
+          REVIEWERS="min.yin@it-experts.at"
+
           for commit in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
             echo "checking commit $commit"
-            if git diff -U0 $commit~1 $commit | grep -E "^\+.*Change.*"; then
+            if git diff -U0 $commit~1 $commit | grep -E "^\+.*$KEYWORD.*"; then
               echo "Found"
-              gh api --method POST /repos/${{github.repository}}/pulls
+              gh pr create --title "Review: "$KEYWORD" has been used here" --reviewer $REVIEWERS --base $commit
             else
               echo "Not found"
             fi
