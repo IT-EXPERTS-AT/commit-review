@@ -31,6 +31,8 @@ jobs:
           echo "::set-output name=reviewersJSON::$content"
 
       - name: Check each commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REVIEWERS=${{fromJson(steps.parse_reviewers.outputs.reviewersJSON)}}
           echo "${REVIEWERS[@]}"
