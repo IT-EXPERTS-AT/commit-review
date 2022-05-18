@@ -3,25 +3,12 @@
         "keywords": [
             "IMS"
         ],
-        "reviewers": [
-            "min.yin@it-experts.at",
-            "another@it-experts.at"
-        ]
-    },
-    {
-        "keywords": [
-            "Lambda"
-        ],
-        "reviewers": [
-            "min.yin@it-experts.at"
-        ]
+        "reviewer": "myin-itex"
     },
     {
         "keywords": [
             "DynamoDB"
         ],
-        "reviewers": [
-            "another@it-experts.at"
-        ]
+        "reviewer": "myin-itex"
     }
 ]

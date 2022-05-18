@@ -6,67 +6,68 @@ on:
     branches: "**"
 
 jobs:
+  # parse:
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     REVIEWERS_FILE: reviewers.json
+  #   outputs:
+  #     reviewersJSON: ${{ steps.parse_reviewers.outputs.reviewersJSON }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+
+  #     # https://stackoverflow.com/questions/61919141/read-json-file-in-github-actions
+  #     - name: Parse Reviewers
+  #       id: parse_reviewers
+  #       run: |
+  #         content=`cat ${{ env.REVIEWERS_FILE }}`
+  #         # the following lines are only required for multi line json
+  #         content="${content//'%'/'%25'}"
+  #         content="${content//$'\n'/'%0A'}"
+  #         content="${content//$'\r'/'%0D'}"
+  #         # end of optional handling for multi line json
+  #         echo "::set-output name=reviewersJSON::$content"
+
   check:
     runs-on: ubuntu-latest
-
+    # needs: parse
     env:
-      REVIEWERS_FILE: reviewers.json
       REMOTE: origin
-
+    strategy:
+      matrix:
+        keyword: ["IMS myin-itex", "DynamoDB myin-itex"]
     steps:
       - uses: actions/checkout@v3
         with:
           # checkout full tree
           fetch-depth: 0
 
-      # https://stackoverflow.com/questions/61919141/read-json-file-in-github-actions
-      - name: Parse Reviewers
-        id: parse_reviewers
-        run: |
-          content=`cat ${{env.REVIEWERS_FILE}}`
-          # the following lines are only required for multi line json
-          content="${content//'%'/'%25'}"
-          content="${content//$'\n'/'%0A'}"
-          content="${content//$'\r'/'%0D'}"
-          # end of optional handling for multi line json
-          echo "::set-output name=reviewersJSON::$content"
-
       - name: Check each commit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REVIEWERS=${{fromJson(steps.parse_reviewers.outputs.reviewersJSON)}}
-          echo "${REVIEWERS[@]}"
-          # FIRST=${REVIEWERS[0]}
-          # KEYWORDS=${FIRST["keywords"]}
-          # echo ${KEYWORDS[*]// /|}
-          # IFS='|';echo "${REVIEWERS[*]}";IFS=$' \t\n'
-          # for x in $REVIEWERS; do
-          #   echo $x
-          # done
-
-          KEYWORD="Change"
-          REVIEWERS="myin-itex"
+          KEYWORD_SPLIT=(${{matrix.keyword}})
+          KEYWORD="${KEYWORD_SPLIT[0]}"
+          REVIEWERS="${KEYWORD_SPLIT[1]}"
 
           for COMMIT in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
             echo "checking commit $COMMIT"
             if git diff -U0 $COMMIT~1 $COMMIT| grep -E "^\+.*$KEYWORD.*"; then
               echo "Creating PR for $COMMIT"
 
-              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
-              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+              # BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+              # TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
 
-              git checkout -b $BASE_BRANCH $COMMIT~1
-              git push --set-upstream $REMOTE $BASE_BRANCH
+              # git checkout -b $BASE_BRANCH $COMMIT~1
+              # git push --set-upstream $REMOTE $BASE_BRANCH
 
-              git checkout -b $TARGET_BRANCH $COMMIT
-              git push --set-upstream $REMOTE $TARGET_BRANCH
+              # git checkout -b $TARGET_BRANCH $COMMIT
+              # git push --set-upstream $REMOTE $TARGET_BRANCH
 
-              gh pr create --title "Review: "$KEYWORD" has been used here" \
-              --body "Please check if this change is safe" \
-              --reviewer $REVIEWERS \
-              --base $BASE_BRANCH \
-              --head $TARGET_BRANCH
+              # gh pr create --title 'Review: "$KEYWORD" has been used here' \
+              # --body "Please check if this change is safe" \
+              # --reviewer $REVIEWERS \
+              # --base $BASE_BRANCH \
+              # --head $TARGET_BRANCH
             else
               echo "Not found"
             fi
