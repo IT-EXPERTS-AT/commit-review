@@ -54,20 +54,23 @@ jobs:
             if git diff -U0 $COMMIT~1 $COMMIT| grep -E "^\+.*$KEYWORD.*"; then
               echo "Creating PR for $COMMIT"
 
-              # BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
-              # TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
 
-              # git checkout -b $BASE_BRANCH $COMMIT~1
-              # git push --set-upstream $REMOTE $BASE_BRANCH
+              # gh api /repos/${{ github.repository }}/pulls?head=$TARGET_BRANCH | jq ''
+              # gh api /repos/IT-EXPERTS-AT/commit-review/pulls/1/requested_reviewers
 
-              # git checkout -b $TARGET_BRANCH $COMMIT
-              # git push --set-upstream $REMOTE $TARGET_BRANCH
+              git checkout -b $BASE_BRANCH $COMMIT~1
+              git push --set-upstream $REMOTE $BASE_BRANCH
 
-              # gh pr create --title 'Review: "$KEYWORD" has been used here' \
-              # --body "Please check if this change is safe" \
-              # --reviewer $REVIEWERS \
-              # --base $BASE_BRANCH \
-              # --head $TARGET_BRANCH
+              git checkout -b $TARGET_BRANCH $COMMIT
+              git push --set-upstream $REMOTE $TARGET_BRANCH
+
+              gh pr create --title 'Review: "$KEYWORD" has been used here' \
+              --body "Please check if this change is safe" \
+              --reviewer $REVIEWERS \
+              --base $BASE_BRANCH \
+              --head $TARGET_BRANCH
             else
               echo "Not found"
             fi
