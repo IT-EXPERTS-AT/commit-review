@@ -53,15 +53,20 @@ jobs:
             if git diff -U0 $COMMIT~1 $COMMIT| grep -E "^\+.*$KEYWORD.*"; then
               echo "Creating PR for $COMMIT"
 
-              BRANCH="commit-review-$COMMIT-$KEYWORD"
-              git checkout -b $BRANCH $COMMIT~1
-              git push --set-upstream $REMOTE $BRANCH
+              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+
+              git checkout -b $BASE_BRANCH $COMMIT~1
+              git push --set-upstream $REMOTE $BASE_BRANCH
+
+              git checkout -b $TARGET_BRANCH $COMMIT
+              git push --set-upstream $REMOTE $TARGET_BRANCH
 
               gh pr create --title "Review: "$KEYWORD" has been used here" \
               --body "Please check if this change is safe" \
               --reviewer $REVIEWERS \
-              --base $BRANCH
-              --head $COMMIT
+              --base $BASE_BRANCH
+              --head $TARGET_BRANCH
             else
               echo "Not found"
             fi
