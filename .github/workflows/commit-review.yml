@@ -11,6 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          for commit in $(git rev-list ${{ github.event.before}}..${{ github.sha}}); do
-              echo "run check for $commit"
-          done
+          echo ${{ github.event.commits }}
+          # for commit in $(${{ github.event.before}}..${{ github.sha}}); do
+          #     echo "run check for $commit"
+          # done
