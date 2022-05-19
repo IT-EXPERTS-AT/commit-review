@@ -99,7 +99,7 @@ jobs:
                     echo "::set-output name=missingReviewers::$MISSING_REVIEWERS"
                     echo "::set-output name=failedCommit::$COMMIT"
                     echo $MISSING_REVIEWERS
-                  do
+                  fi
                 fi
               fi
             fi
