@@ -49,35 +49,40 @@ jobs:
           KEYWORD="${KEYWORD_SPLIT[0]}"
           REVIEWERS="${KEYWORD_SPLIT[1]}"
 
+          # For each new commit pushed
           for COMMIT in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
             echo "checking commit $COMMIT"
 
             # github actions cannot create a PR to change workflow files
             if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
+              echo "Contains keyword $KEYWORD"
 
+              PR_OUTPUT=$(gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls)
+              if $PR_OUTPUT; then
+                echo "Commit has existing PR"
 
-              # gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls | jq ''
+                # Only consider merge commit
+                PR_NUMBER=$(echo $PR_OUTPUT | jq '.[] | select(.merge_commit_sha | test("$COMMIT")) | .number')
+                if $PR_NUMBER; then
+                  echo $PR_NUMBER
+                fi
+              else
+                echo "Creating PR for $COMMIT"
 
-              echo "Creating PR for $COMMIT"
+                BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+                TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
 
-              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
-              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+                git checkout -b $BASE_BRANCH $COMMIT~1
+                git push --set-upstream $REMOTE $BASE_BRANCH
 
-              # gh api /repos/${{ github.repository }}/pulls?head=$TARGET_BRANCH | jq ''
-              # gh api /repos/IT-EXPERTS-AT/commit-review/pulls/1/requested_reviewers
+                git checkout -b $TARGET_BRANCH $COMMIT
+                git push --set-upstream $REMOTE $TARGET_BRANCH
 
-              git checkout -b $BASE_BRANCH $COMMIT~1
-              git push --set-upstream $REMOTE $BASE_BRANCH
-
-              git checkout -b $TARGET_BRANCH $COMMIT
-              git push --set-upstream $REMOTE $TARGET_BRANCH
-
-              gh pr create --title "Review: \"$KEYWORD\" has been used here" \
-              --body "Please check if this change is safe" \
-              --reviewer $REVIEWERS \
-              --base $BASE_BRANCH \
-              --head $TARGET_BRANCH
-            else
-              echo "Not found"
+                gh pr create --title "Review: \"$KEYWORD\" has been used here" \
+                --body "Please check if this change is safe" \
+                --reviewer $REVIEWERS \
+                --base $BASE_BRANCH \
+                --head $TARGET_BRANCH
+              fi
             fi
           done
