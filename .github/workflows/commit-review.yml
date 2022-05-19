@@ -51,7 +51,13 @@ jobs:
 
           for COMMIT in $(git rev-list ${{ github.event.before}}..${{ github.event.after}}); do
             echo "checking commit $COMMIT"
-            if git diff -U0 $COMMIT~1 $COMMIT| grep -E "^\+.*$KEYWORD.*"; then
+
+            # github actions cannot create a PR to change workflow files
+            if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
+
+
+              # gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls | jq ''
+
               echo "Creating PR for $COMMIT"
 
               BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
