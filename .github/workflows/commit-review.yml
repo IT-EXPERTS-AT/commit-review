@@ -53,7 +53,7 @@ jobs:
           REQUESTS=""
 
           # for each new commit pushed
-          for COMMIT in $(git rev-list ${{ github.event.before }}..${{ github.event.after }})"; do
+          for COMMIT in $(git rev-list ${{ github.event.before }}..${{ github.event.after }}); do
 
             # github actions cannot create a PR to change workflow files
             if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
