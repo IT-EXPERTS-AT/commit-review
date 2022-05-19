@@ -30,77 +30,99 @@ jobs:
   #         content="${content//$'\r'/'%0D'}"
   #         # end of optional handling for multi line json
   #         echo "::set-output name=reviewersJSON::$content"
-
-  check:
+  commits:
     runs-on: ubuntu-latest
-    # needs: parse
-    strategy:
-      matrix:
-        keyword: ["IMS myin-itex", "DynamoDB myin-itex"]
+    outputs:
+      commits: ${{ steps.load_commits.outputs.commits }}
     steps:
       - uses: actions/checkout@v3
         with:
           # checkout full tree
           fetch-depth: 0
+      - name: Load Commits
+        id: load_commits
+        run: |
+          COMMITS="$(git rev-list ${{ github.event.before }}..${{ github.event.after }})"
+          FORMATTED=$(echo $COMMITS | sed 's/ /","/g')
+          FORMATTED="[\"$FORMATTED\"]"
+          echo "::set-output name=commits::$FORMATTED"
+
+  check:
+    runs-on: ubuntu-latest
+    needs: commits
+    strategy:
+      matrix:
+        keyword: ["IMS myin-itex", "DynamoDB myin-itex"]
+        commit: ${{ fromJSON(needs.commits.outputs.commits) }}
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Check commit
+        id: check_commit
         run: |
-          KEYWORD_SPLIT=(${{matrix.keyword}})
+          KEYWORD_SPLIT=(${{ matrix.keyword }})
           KEYWORD="${KEYWORD_SPLIT[0]}"
           REVIEWERS="${KEYWORD_SPLIT[1]}"
+          COMMIT=${{ matrix.commit }}
 
-          # For each new commit pushed
-          for COMMIT in $(git rev-list ${{ github.event.before }}..${{ github.event.after }}); do
-            echo "checking commit $COMMIT"
+          # github actions cannot create a PR to change workflow files
+          if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
 
-            # github actions cannot create a PR to change workflow files
-            if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
-              echo "Contains keyword $KEYWORD"
+            PR_OUTPUT="$(gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls)"
 
-              PR_OUTPUT="$(gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls)"
-              if [[ $(echo $PR_OUTPUT | jq 'length') -eq 0 ]]; then
-                echo "Creating PR for $COMMIT"
+            if [[ $(echo $PR_OUTPUT | jq 'length') -eq 0 ]]; then
+              echo "Creating PR for $COMMIT"
 
-                BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
-                TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
 
-                git checkout -b $BASE_BRANCH $COMMIT~1
-                git push --set-upstream $REMOTE $BASE_BRANCH
+              git checkout -b $BASE_BRANCH $COMMIT~1
+              git push --set-upstream $REMOTE $BASE_BRANCH
 
-                git checkout -b $TARGET_BRANCH $COMMIT
-                git push --set-upstream $REMOTE $TARGET_BRANCH
+              git checkout -b $TARGET_BRANCH $COMMIT
+              git push --set-upstream $REMOTE $TARGET_BRANCH
 
-                gh pr create --title "Review: \"$KEYWORD\" has been used here" \
-                --body "Please check if this change is safe" \
-                --reviewer $REVIEWERS \
-                --base $BASE_BRANCH \
-                --head $TARGET_BRANCH
-              else
-                echo "Commit has existing PR"
+              gh pr create --title "Review: \"$KEYWORD\" has been used here" \
+              --body "Please check if this change is safe" \
+              --reviewer $REVIEWERS \
+              --base $BASE_BRANCH \
+              --head $TARGET_BRANCH
+            else
+              # Only consider merge commit
+              PR_NUMBER=$(echo $PR_OUTPUT | jq ".[] | select(.merge_commit_sha | test(\"$COMMIT\")) | .number")
 
-                # Only consider merge commit
-                PR_NUMBER=$(echo $PR_OUTPUT | jq ".[] | select(.merge_commit_sha | test(\"$COMMIT\")) | .number")
-                if [[ ! -z $PR_NUMBER ]]; then
-                  echo "Checking PR $PR_NUMBER for reviewers"
+              if [[ ! -z $PR_NUMBER ]]; then
+                echo "Checking PR $PR_NUMBER for reviewers"
 
-                  EXPECTED_REVIEWERS=($(echo $REVIEWERS | sed 's/,/ /'))
-                  REVIEWS="$(gh api /repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews)"
-                  REVIEWED=$(echo $REVIEWS | jq '.[].user.login')
+                EXPECTED_REVIEWERS=($(echo $REVIEWERS | sed 's/,/ /g'))
+                REVIEWS="$(gh api /repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews)"
+                REVIEWED=$(echo $REVIEWS | jq '.[].user.login')
 
-                  MISSING_REVIEWERS=""
-                  for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
-                    if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
-                      MISSING_REVIEWERS="$MISSING_REVIEWERS $REVIEWER"
-                    fi
-                  done
-
-                  if [[ ! -z $MISSING_REVIEWERS ]]; then
-                    # TODO: handle multiple cases
-                    echo "::set-output name=missingReviewers::$MISSING_REVIEWERS"
-                    echo "::set-output name=failedCommit::$COMMIT"
-                    echo $MISSING_REVIEWERS
+                MISSING_REVIEWERS=""
+                for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
+                  if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
+                    MISSING_REVIEWERS="$MISSING_REVIEWERS $REVIEWER"
                   fi
+                done
+
+                if [[ ! -z $MISSING_REVIEWERS ]]; then
+                  echo "::set-output name=missingReviewers::$MISSING_REVIEWERS"
                 fi
               fi
             fi
-          done
+          fi
+      - name: Send email
+        uses: dawidd6/action-send-mail@v3
+        if: ${{ steps.check_commit.outputs.missingReviewers }}
+        env:
+          KEYWORD: (${{ matrix.keyword }})
+          COMMIT: ${{ matrix.commit }}
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: ${{ secrets.MAIL_USER }}
+          subject: "Test"
+          to: min.yin@it-experts.at
+          body: $KEYWORD has been used in commit $COMMIT
