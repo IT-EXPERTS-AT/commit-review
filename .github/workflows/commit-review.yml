@@ -118,7 +118,7 @@ jobs:
 
             gh pr create --title "Review: \"$KEYWORD\" has been used here" \
             --body "Please check if this change is safe" \
-            --reviewer "$REVIEWERS" \
+            --reviewer "$REVIEWER" \
             --base "$BASE_BRANCH" \
             --head "$TARGET_BRANCH"
           done
