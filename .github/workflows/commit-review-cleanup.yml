@@ -2,7 +2,9 @@ name: Commit Review Cleanup
 
 on:
   pull_request_review:
-    branches: "commit-review-**"
+    types: [ submitted ]
+    # branches:
+    #   - "commit-review-**"
 
 jobs:
   cleanup:
