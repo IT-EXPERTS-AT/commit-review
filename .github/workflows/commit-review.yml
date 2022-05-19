@@ -76,7 +76,7 @@ jobs:
                   MISSING=""
                   for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
                     if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
-                      MISSING="$MISSING,$REVIEWER"
+                      MISSING="$MISSING$REVIEWER,"
                     fi
                   done
 
@@ -118,9 +118,9 @@ jobs:
 
             gh pr create --title "Review: \"$KEYWORD\" has been used here" \
             --body "Please check if this change is safe" \
-            --reviewer $REVIEWERS \
-            --base $BASE_BRANCH \
-            --head $TARGET_BRANCH
+            --reviewer "$REVIEWERS" \
+            --base "$BASE_BRANCH" \
+            --head "$TARGET_BRANCH"
           done
 
   # emails:
