@@ -1,0 +1,21 @@
+name: Commit Review Cleanup
+
+on:
+  pull_request_review:
+    branches: "commit-review-**"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
+          REMAINING=$(gh api $PR_URL/requested_reviewers | jq 'length')
+
+          if $REMAINING -eq 0; then
+            BRANCHES=$(gh api --method PATCH $PR_URL -f state='closed' | jq '.base.ref,.head.ref')
+
+            for BRANCH in ${BRANCHES[@]}; do
+              git push origin --delete $BRANCH
+            done
+          fi
