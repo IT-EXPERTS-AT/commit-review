@@ -2,16 +2,19 @@ name: Commit Review Cleanup
 
 on:
   pull_request_review:
-    types: [ submitted ]
+    types: [submitted]
     # branches:
     #   - "commit-review-**"
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
+          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.number }}"
           REMAINING=$(gh api $PR_URL/requested_reviewers | jq 'length')
 
           if $REMAINING -eq 0; then

@@ -1,0 +1,10 @@
+{
+    "action": "submitted",
+    "number": 2,
+    "head": {
+        "ref": "test-1"
+    },
+    "base": {
+        "ref": "test-2"
+    }
+}
