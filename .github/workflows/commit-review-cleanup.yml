@@ -3,8 +3,8 @@ name: Commit Review Cleanup
 on:
   pull_request_review:
     types: [submitted]
-    # branches:
-    #   - "commit-review-**"
+    branches:
+      - "commit-review-**"
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
