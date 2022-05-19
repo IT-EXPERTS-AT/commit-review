@@ -76,9 +76,10 @@ jobs:
                   MISSING=""
                   for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
                     if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
-                      MISSING="$MISSING$REVIEWER,"
+                      MISSING="$MISSING,$REVIEWER"
                     fi
                   done
+                  MISSING="$(echo $MISSING | sed 's/^,//g')"
 
                   if [[ ! -z $MISSING ]]; then
                     REQUESTS="$REQUESTS $COMMIT:$KEYWORD:$MISSING"
