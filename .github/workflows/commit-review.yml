@@ -2,8 +2,8 @@ name: Commit Review
 
 on:
   push:
-    # only trigger on branches, not on tags
-    branches: "**"
+    branches:
+      - main
 
 jobs:
   # parse:
