@@ -30,32 +30,19 @@ jobs:
   #         content="${content//$'\r'/'%0D'}"
   #         # end of optional handling for multi line json
   #         echo "::set-output name=reviewersJSON::$content"
-  commits:
+
+  check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        keyword: ["IMS myin-itex", "DynamoDB myin-itex"]
     outputs:
-      commits: ${{ steps.load_commits.outputs.commits }}
+      pull_requests: ${{ steps.check_commit.outputs.pull_requests }}
     steps:
       - uses: actions/checkout@v3
         with:
           # checkout full tree
           fetch-depth: 0
-      - name: Load Commits
-        id: load_commits
-        run: |
-          COMMITS="$(git rev-list ${{ github.event.before }}..${{ github.event.after }})"
-          FORMATTED=$(echo $COMMITS | sed 's/ /","/g')
-          FORMATTED="[\"$FORMATTED\"]"
-          echo "::set-output name=commits::$FORMATTED"
-
-  check:
-    runs-on: ubuntu-latest
-    needs: commits
-    strategy:
-      matrix:
-        keyword: ["IMS myin-itex", "DynamoDB myin-itex"]
-        commit: ${{ fromJSON(needs.commits.outputs.commits) }}
-    steps:
-      - uses: actions/checkout@v3
 
       - name: Check commit
         id: check_commit
@@ -63,66 +50,94 @@ jobs:
           KEYWORD_SPLIT=(${{ matrix.keyword }})
           KEYWORD="${KEYWORD_SPLIT[0]}"
           REVIEWERS="${KEYWORD_SPLIT[1]}"
-          COMMIT=${{ matrix.commit }}
 
-          # github actions cannot create a PR to change workflow files
-          if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
+          REQUESTS=""
 
-            PR_OUTPUT="$(gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls)"
+          # for each new commit pushed
+          for COMMIT in $(git rev-list ${{ github.event.before }}..${{ github.event.after }})"; do
 
-            if [[ $(echo $PR_OUTPUT | jq 'length') -eq 0 ]]; then
-              echo "Creating PR for $COMMIT"
+            # github actions cannot create a PR to change workflow files
+            if git diff -U0 $COMMIT~1 $COMMIT ':(exclude).github/' | grep -E "^\+.*$KEYWORD.*"; then
 
-              BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
-              TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+              PR_OUTPUT="$(gh api /repos/${{ github.repository }}/commits/$COMMIT/pulls)"
 
-              git checkout -b $BASE_BRANCH $COMMIT~1
-              git push --set-upstream $REMOTE $BASE_BRANCH
+              if [[ $(echo $PR_OUTPUT | jq 'length') -eq 0 ]]; then
+                REQUESTS="$REQUESTS $COMMIT:$KEYWORD:$REVIEWERS"
+              else
+                # Only consider merge commit
+                PR_NUMBER=$(echo $PR_OUTPUT | jq ".[] | select(.merge_commit_sha | test(\"$COMMIT\")) | .number")
 
-              git checkout -b $TARGET_BRANCH $COMMIT
-              git push --set-upstream $REMOTE $TARGET_BRANCH
+                if [[ ! -z $PR_NUMBER ]]; then
+                  echo "Checking PR $PR_NUMBER for reviewers"
 
-              gh pr create --title "Review: \"$KEYWORD\" has been used here" \
-              --body "Please check if this change is safe" \
-              --reviewer $REVIEWERS \
-              --base $BASE_BRANCH \
-              --head $TARGET_BRANCH
-            else
-              # Only consider merge commit
-              PR_NUMBER=$(echo $PR_OUTPUT | jq ".[] | select(.merge_commit_sha | test(\"$COMMIT\")) | .number")
+                  EXPECTED_REVIEWERS=($(echo $REVIEWERS | sed 's/,/ /g'))
+                  REVIEWS="$(gh api /repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews)"
+                  REVIEWED=$(echo $REVIEWS | jq '.[].user.login')
 
-              if [[ ! -z $PR_NUMBER ]]; then
-                echo "Checking PR $PR_NUMBER for reviewers"
+                  MISSING=""
+                  for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
+                    if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
+                      MISSING="$MISSING,$REVIEWER"
+                    fi
+                  done
 
-                EXPECTED_REVIEWERS=($(echo $REVIEWERS | sed 's/,/ /g'))
-                REVIEWS="$(gh api /repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews)"
-                REVIEWED=$(echo $REVIEWS | jq '.[].user.login')
-
-                MISSING_REVIEWERS=""
-                for REVIEWER in ${EXPECTED_REVIEWERS[@]}; do
-                  if [[ -z $(echo $REVIEWED | grep $REVIEWER) ]]; then
-                    MISSING_REVIEWERS="$MISSING_REVIEWERS $REVIEWER"
+                  if [[ ! -z $MISSING ]]; then
+                    REQUESTS="$REQUESTS $COMMIT:$KEYWORD:$MISSING"
                   fi
-                done
-
-                if [[ ! -z $MISSING_REVIEWERS ]]; then
-                  echo "::set-output name=missingReviewers::$MISSING_REVIEWERS"
                 fi
               fi
             fi
-          fi
-      - name: Send email
-        uses: dawidd6/action-send-mail@v3
-        if: ${{ steps.check_commit.outputs.missingReviewers }}
-        env:
-          KEYWORD: (${{ matrix.keyword }})
-          COMMIT: ${{ matrix.commit }}
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.MAIL_USER }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          from: ${{ secrets.MAIL_USER }}
-          subject: "Test"
-          to: min.yin@it-experts.at
-          body: $KEYWORD has been used in commit $COMMIT
+          done
+
+          FORMATTED="[\"$(echo $REQUESTS | sed 's/ /","/g')\"]"
+          echo "::set-output name=pull_requests::$FORMATTED"
+  pull_request:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Create Pull Request
+        run: |
+          REQUESTS=(${{ needs.check.outputs.pull_requests }})
+
+          for REQUEST in ${REQUESTS[@]}; do
+            DATA=($(echo $REQUEST | sed 's/:/ /g'))
+            COMMIT=${DATA[0]}
+            KEYWORD=${DATA[1]}
+            REVIEWER=${DATA[2]}
+
+            BASE_BRANCH="commit-review-$COMMIT-$KEYWORD-base"
+            TARGET_BRANCH="commit-review-$COMMIT-$KEYWORD-target"
+
+            git checkout -b $BASE_BRANCH $COMMIT~1
+            git push --set-upstream $REMOTE $BASE_BRANCH
+
+            git checkout -b $TARGET_BRANCH $COMMIT
+            git push --set-upstream $REMOTE $TARGET_BRANCH
+
+            gh pr create --title "Review: \"$KEYWORD\" has been used here" \
+            --body "Please check if this change is safe" \
+            --reviewer $REVIEWERS \
+            --base $BASE_BRANCH \
+            --head $TARGET_BRANCH
+          done
+
+  # emails:
+  #   runs-on: ubuntu-latest
+  #   needs: check
+  #   strategy:
+  #     matrix:
+  #       reviewer: ${{ fromJSON(needs.check.outputs.missingReviewers) }}
+  #   steps:
+  #     - name: Send email
+  #       uses: dawidd6/action-send-mail@v3
+  #       env:
+  #         KEYWORD: $(echo ${{ matrix.reviewer }} | sed 's/:/ /g')
+  #       with:
+  #         server_address: smtp.gmail.com
+  #         server_port: 465
+  #         username: ${{ secrets.MAIL_USER }}
+  #         password: ${{ secrets.MAIL_PASSWORD }}
+  #         from: ${{ secrets.MAIL_USER }}
+  #         subject: "Test"
+  #         to: min.yin@it-experts.at
+  #         body: ${{ env.KEYWORD }}
