@@ -9,27 +9,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  # parse:
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     REVIEWERS_FILE: reviewers.json
-  #   outputs:
-  #     reviewersJSON: ${{ steps.parse_reviewers.outputs.reviewersJSON }}
-  #   steps:
-  #     - uses: actions/checkout@v3
-
-  #     # https://stackoverflow.com/questions/61919141/read-json-file-in-github-actions
-  #     - name: Parse Reviewers
-  #       id: parse_reviewers
-  #       run: |
-  #         content=`cat ${{ env.REVIEWERS_FILE }}`
-  #         # the following lines are only required for multi line json
-  #         content="${content//'%'/'%25'}"
-  #         content="${content//$'\n'/'%0A'}"
-  #         content="${content//$'\r'/'%0D'}"
-  #         # end of optional handling for multi line json
-  #         echo "::set-output name=reviewersJSON::$content"
-
   check:
     runs-on: ubuntu-latest
     strategy:
@@ -124,24 +103,3 @@ jobs:
             --base "$BASE_BRANCH" \
             --head "$TARGET_BRANCH"
           done
-
-  # emails:
-  #   runs-on: ubuntu-latest
-  #   needs: check
-  #   strategy:
-  #     matrix:
-  #       reviewer: ${{ fromJSON(needs.check.outputs.missingReviewers) }}
-  #   steps:
-  #     - name: Send email
-  #       uses: dawidd6/action-send-mail@v3
-  #       env:
-  #         KEYWORD: $(echo ${{ matrix.reviewer }} | sed 's/:/ /g')
-  #       with:
-  #         server_address: smtp.gmail.com
-  #         server_port: 465
-  #         username: ${{ secrets.MAIL_USER }}
-  #         password: ${{ secrets.MAIL_PASSWORD }}
-  #         from: ${{ secrets.MAIL_USER }}
-  #         subject: "Test"
-  #         to: min.yin@it-experts.at
-  #         body: ${{ env.KEYWORD }}

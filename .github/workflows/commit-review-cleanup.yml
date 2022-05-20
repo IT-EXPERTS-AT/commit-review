@@ -1,5 +1,6 @@
 name: Commit Review Cleanup
 
+# TODO: does not get trigger for some reason
 on:
   pull_request_review:
     types: [submitted]
