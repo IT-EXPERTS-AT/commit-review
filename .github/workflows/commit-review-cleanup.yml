@@ -15,7 +15,7 @@ jobs:
     steps:
       - run: |
           PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
-          REMAINING=$(gh api "$PR_URL/requested_reviewers" | jq 'length')
+          REMAINING=$(gh api "$PR_URL/requested_reviewers" | jq '.users | length')
 
           echo "Remaining Reviewers: $REMAINING"
           if [[ $REMAINING -eq 0 ]]; then
