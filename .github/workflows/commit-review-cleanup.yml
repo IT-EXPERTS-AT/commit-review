@@ -23,7 +23,8 @@ jobs:
             BRANCHES=$(gh api --method PATCH $PR_URL -f state='closed' | jq '.base.ref,.head.ref')
             echo "Cleaning up branches ${BRANCHES[@]}"
 
-            for BRANCH in ${BRANCHES[@]}; do # TODO: fails to delete
-              git push origin --delete $BRANCH
+            for BRANCH in ${BRANCHES[@]}; do
+              FORMATTED=$(echo $BRANCH | sed 's/"//g')
+              git push origin --delete $FORMATTED
             done
           fi
