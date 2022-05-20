@@ -26,6 +26,6 @@ jobs:
             echo "Cleaning up branches ${BRANCHES[@]}"
 
             for BRANCH in ${BRANCHES[@]}; do
-              git push origin --delete $BRANCH
+              git push origin --delete remotes/origin/$BRANCH
             done
           fi
