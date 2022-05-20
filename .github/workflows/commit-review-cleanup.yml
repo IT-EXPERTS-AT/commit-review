@@ -14,7 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.number }}"
+          echo "${{ github.event }}"
+          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
           REMAINING=$(gh api $PR_URL/requested_reviewers | jq 'length')
 
           if [[ $REMAINING -eq 0 ]]; then
