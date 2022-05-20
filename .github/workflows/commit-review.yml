@@ -68,6 +68,7 @@ jobs:
           done
 
           echo "::set-output name=pull_requests::$REQUESTS"
+  # TODO: does not work with multiple matches in single commit, move to step
   pull_request:
     runs-on: ubuntu-latest
     needs: check
