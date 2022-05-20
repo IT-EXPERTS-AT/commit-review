@@ -14,6 +14,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - run: |
           PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.number }}"
           REMAINING=$(gh api $PR_URL/requested_reviewers | jq 'length')
