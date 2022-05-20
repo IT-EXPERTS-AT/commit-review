@@ -1,6 +1,5 @@
 name: Commit Review Cleanup
 
-# TODO: does not get trigger for some reason
 on:
   pull_request_review:
     types: [submitted]
@@ -24,7 +23,7 @@ jobs:
             BRANCHES=$(gh api --method PATCH $PR_URL -f state='closed' | jq '.base.ref,.head.ref')
             echo "Cleaning up branches ${BRANCHES[@]}"
 
-            for BRANCH in ${BRANCHES[@]}; do
+            for BRANCH in ${BRANCHES[@]}; do # TODO: fails to delete
               git push origin --delete $BRANCH
             done
           fi
