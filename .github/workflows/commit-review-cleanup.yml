@@ -16,8 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
+          echo ${{github.event}}
           PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.number }}"
-          REMAINING=$(gh api $PR_URL/requested_reviewers | jq 'length')
+          REMAINING=$(gh api "$PR_URL/requested_reviewers" | jq 'length')
 
           if $REMAINING -eq 0; then
             BRANCHES=$(gh api --method PATCH $PR_URL -f state='closed' | jq '.base.ref,.head.ref')
