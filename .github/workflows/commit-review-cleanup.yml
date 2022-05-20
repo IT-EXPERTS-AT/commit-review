@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request_number }}"
+          PR_URL="/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}"
           REMAINING=$(gh api "$PR_URL/requested_reviewers" | jq 'length')
 
           echo "Remaining Reviewers: $REMAINING"
